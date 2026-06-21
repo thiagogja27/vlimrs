@@ -1,6 +1,5 @@
 {
   "name": "Conversor XML para PDF",
   "description": "Conversor e analisador de notas fiscais (NF-e / NFS-e) para PDF e planilhas Excel.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": []
 }

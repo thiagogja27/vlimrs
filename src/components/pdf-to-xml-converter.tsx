@@ -38,7 +38,6 @@ export function PDFToXMLConverter({ onAnalyzeXML }: PDFToXMLConverterProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [isProcessingAll, setIsProcessingAll] = useState(false)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
-  const [useAI, setUseAI] = useState<boolean>(false) // Default to false/Regras locais (Sem IA) as per user request!
   
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const folderInputRef = React.useRef<HTMLInputElement>(null)
@@ -70,7 +69,6 @@ export function PDFToXMLConverter({ onAnalyzeXML }: PDFToXMLConverterProps) {
         body: JSON.stringify({
           fileBase64: base64Data,
           fileName: file.name,
-          useAI: useAI, // Send useAI parameter
         }),
       })
 
@@ -277,36 +275,11 @@ export function PDFToXMLConverter({ onAnalyzeXML }: PDFToXMLConverterProps) {
           <div className="p-3.5 bg-zinc-100 border border-zinc-200 rounded-lg dark:bg-zinc-900/50 dark:border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
             <div>
               <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                Método de Conversão / Extração
+                Método de Conversão
               </p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                Escolha se deseja converter usando regra determinística local (extremamente rápida, offline e grátis) ou Inteligência Artificial.
+                Conversão realizada localmente com parser de texto do PDF, sem uso de IA.
               </p>
-            </div>
-            <div className="flex bg-zinc-200 dark:bg-zinc-800 p-0.5 rounded-lg text-xs font-semibold shrink-0 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setUseAI(false)}
-                className={`px-3 py-1.5 rounded-md transition-all ${
-                  !useAI
-                    ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-900 dark:text-zinc-50'
-                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
-                }`}
-              >
-                Regras Locais (Sem IA)
-              </button>
-              <button
-                type="button"
-                onClick={() => setUseAI(true)}
-                className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1 ${
-                  useAI
-                    ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-900 dark:text-zinc-50'
-                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
-                }`}
-              >
-                <Sparkles className="h-3 w-3 text-indigo-500" />
-                Gemini (Com IA)
-              </button>
             </div>
           </div>
 
@@ -330,15 +303,9 @@ export function PDFToXMLConverter({ onAnalyzeXML }: PDFToXMLConverterProps) {
             <p className="text-xs text-zinc-400 mt-1 mb-6">
               O sistema identificará de forma inteligente e extrairá todos os arquivos de extensão .PDF
             </p>
-            {useAI ? (
-              <p className="text-xs font-medium text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-1 rounded-full mb-6 max-w-md mx-auto">
-                Atenção: A conversão por IA analisa o documento em profundidade usando o Gemini, o que pode levar alguns segundos por nota.
-              </p>
-            ) : (
-              <p className="text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full mb-6 max-w-md mx-auto">
-                Modo ultra veloz Ativo: As notas serão convertidas em milissegundos localmente por expressões regulares.
-              </p>
-            )}
+            <p className="text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full mb-6 max-w-md mx-auto">
+              Modo local ativo: as notas serão convertidas localmente pelo parser de texto do PDF.
+            </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md">
               <div className="w-full">
@@ -450,7 +417,7 @@ export function PDFToXMLConverter({ onAnalyzeXML }: PDFToXMLConverterProps) {
       {results.length > 0 && (
         <Card className="border border-zinc-100 dark:border-zinc-800">
           <CardHeader className="pb-3 border-b border-zinc-50 dark:border-zinc-900">
-            <CardTitle className="text-lg">Resultados da Conversão por IA</CardTitle>
+            <CardTitle className="text-lg">Resultados da Conversão</CardTitle>
           </CardHeader>
           <CardContent className="p-0 divide-y divide-zinc-100 dark:divide-zinc-800">
             {results.map((result, idx) => (
@@ -472,7 +439,7 @@ export function PDFToXMLConverter({ onAnalyzeXML }: PDFToXMLConverterProps) {
                   <div>
                     <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{result.fileName}</p>
                     {result.isProcessing ? (
-                      <p className="text-xs text-indigo-500 mt-0.5">Analisando conteúdo com Gemini-3.5-flash...</p>
+                      <p className="text-xs text-indigo-500 mt-0.5">Convertendo PDF localmente...</p>
                     ) : result.error ? (
                       <p className="text-xs text-destructive mt-0.5">{result.error}</p>
                     ) : (

@@ -1,10 +1,9 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { PDFParse } from "pdf-parse";
-import { parseDanfeText, extractDataFromXML } from "./src/lib/pdf-text-parser";
+import { parseDanfeText } from "./src/lib/pdf-text-parser";
 
 dotenv.config();
 
@@ -15,52 +14,29 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-let aiInstance: GoogleGenAI | null = null;
-
-function getGeminiClient(): GoogleGenAI {
-  if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY não está definido nos Secrets. Por favor, configure-o em Settings > Secrets.");
-    }
-    aiInstance = new GoogleGenAI({
-      apiKey: apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
-  }
-  return aiInstance;
-}
-
-// Endpoint da API para converter PDF em XML de NF-e usando Gemini ou Regras Locais (Sem IA)
+// Endpoint da API para converter PDF em XML de NF-e usando apenas parser local
 app.post("/api/pdf-to-xml", async (req, res) => {
   try {
-    const { fileBase64, fileName, useAI } = req.body;
+    const { fileBase64, fileName } = req.body;
 
     if (!fileBase64) {
       return res.status(400).json({ error: "Nenhum arquivo PDF enviado no corpo da requisição." });
     }
 
-    if (useAI === false) {
-      // Método local baseado em regras (Sem IA) para velocidade e economia de recursos
-      const pdfBuffer = Buffer.from(fileBase64, "base64");
-      const parser = new PDFParse({ data: pdfBuffer });
-      try {
-        const textResult = await parser.getText();
-        const text = textResult.text;
+    const pdfBuffer = Buffer.from(fileBase64, "base64");
+    const parser = new PDFParse({ data: pdfBuffer });
+    try {
+      const textResult = await parser.getText();
+      const text = textResult.text;
 
-        const { xml, data } = parseDanfeText(text, fileName);
-        return res.status(200).json({
-          xml: xml,
-          fileName: fileName ? fileName.replace(/\.pdf$/i, ".xml") : "convertido.xml",
-          parsedData: data,
-        });
-      } finally {
-        await parser.destroy();
-      }
+      const { xml, data } = parseDanfeText(text, fileName);
+      return res.status(200).json({
+        xml,
+        fileName: fileName ? fileName.replace(/\.pdf$/i, ".xml") : "convertido.xml",
+        parsedData: data,
+      });
+    } finally {
+      await parser.destroy();
     }
 
     const ai = getGeminiClient();
@@ -243,26 +219,6 @@ INSTRUÇÕES DE EXTRAÇÃO ADICIONAIS:
 - Não inclua nenhuma introdução ou notas explicativas, apenas retorne o XML limpo contendo as informações lidas do PDF.
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [pdfPart, promptText],
-    });
-
-    const xmlResponse = response.text || "";
-    // Limpar possíveis cabeçalhos que o modelo colocar erroneamente
-    const cleanXml = xmlResponse
-      .replace(/^```xml/gi, "")
-      .replace(/^```/gi, "")
-      .replace(/```$/gi, "")
-      .trim();
-
-    const parsedData = extractDataFromXML(cleanXml, fileName || "convertido.xml");
-
-    return res.status(200).json({
-      xml: cleanXml,
-      fileName: fileName ? fileName.replace(/\.pdf$/i, ".xml") : "convertido.xml",
-      parsedData: parsedData,
-    });
   } catch (err: any) {
     console.error("Erro ao converter PDF para XML:", err);
     return res.status(500).json({ error: err.message || "Erro desconhecido ao converter PDF para XML." });

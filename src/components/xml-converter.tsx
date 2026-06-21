@@ -405,7 +405,7 @@ export function XMLConverter() {
               }`}
             >
               <Sparkles className="h-4 w-4 text-indigo-500" />
-              PDF para XML (IA Gemini)
+              PDF para XML (local)
             </button>
           </div>
         </div>
