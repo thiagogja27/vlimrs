@@ -610,31 +610,61 @@ function formatPhone(phone: string): string {
 // Funções para extrair informações das informações complementares
 function extractTerminalEntrega(infComplementares: string): string {
   if (!infComplementares) return ""
-  // Procura por "TERMINAL DE ENTREGA:" ou "ENTREGA:" e pega o valor correto
-  const match = infComplementares.match(/TERMINAL DE ENTREGA:\s*([^;]+)/i) || infComplementares.match(/ENTREGA:\s*([^,;]+)/i)
-  if (match) {
-    return match[1].trim()
+
+  const patterns = [
+    /TERMINAL DE ENTREGA:\s*([^;\n\r]+)/i,
+    /TERMINAL.*ENTREGA:\s*([^;\n\r]+)/i,
+    /ENTREGA:\s*([^;\n\r]+)/i,
+    /TERMINAL:\s*([^;\n\r]+)/i,
+    /ALFANDEGADO:\s*([^;\n\r]+)/i,
+    /AFANDEGADO:\s*([^;\n\r]+)/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = infComplementares.match(pattern)
+    if (match) {
+      return match[1].trim()
+    }
   }
+
   return ""
 }
 
 function extractTransbordo(infComplementares: string): string {
   if (!infComplementares) return ""
-  // Procura por "TRANSBORDO EM:" ou "TRANSBORDO:" e pega o valor correto
-  const match = infComplementares.match(/TRANSBORDO EM:\s*([^;]+)/i) || infComplementares.match(/TRANSBORDO:\s*([^,;]+)/i)
-  if (match) {
-    return match[1].trim()
+
+  const patterns = [
+    /TRANSBORDO EM:\s*([^;\n\r]+)/i,
+    /TRANSBORDO:\s*([^;\n\r]+)/i,
+    /TRANSBORDO\s*EM:\s*([^;\n\r]+)/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = infComplementares.match(pattern)
+    if (match) {
+      return match[1].trim()
+    }
   }
+
   return ""
 }
 
 function extractRetirada(infComplementares: string): string {
   if (!infComplementares) return ""
-  // Procura por "RETIRADA EM:" ou "RETIRADA:" e pega o valor correto
-  const match = infComplementares.match(/RETIRADA EM:\s*([^;]+)/i) || infComplementares.match(/RETIRADA:\s*([^,;]+)/i)
-  if (match) {
-    return match[1].trim()
+
+  const patterns = [
+    /RETIRADA EM:\s*([^;\n\r]+)/i,
+    /RETIRADA:\s*([^;\n\r]+)/i,
+    /RETIRADA\s*EM:\s*([^;\n\r]+)/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = infComplementares.match(pattern)
+    if (match) {
+      return match[1].trim()
+    }
   }
+
   return ""
 }
 
