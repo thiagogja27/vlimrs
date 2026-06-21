@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { PDFParse } from "pdf-parse";
 import { parseDanfeText } from "./src/lib/pdf-text-parser";
+import { parseNFE } from "./src/lib/xml-parser";
 
 dotenv.config();
 
@@ -14,7 +15,7 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Endpoint da API para converter PDF em XML de NF-e usando apenas parser local
+// Endpoint da API para converter PDF em XML de NF-e usando parser XML robusto
 app.post(
   "/api/pdf-to-xml",
   express.raw({ type: "application/pdf", limit: "50mb" }),
@@ -35,24 +36,61 @@ app.post(
       }
 
       const parser = new PDFParse({ data: pdfBuffer });
-    try {
-      const textResult = await parser.getText();
-      const text = textResult.text;
+      try {
+        const textResult = await parser.getText();
+        const text = textResult.text;
 
-      const { xml, data } = parseDanfeText(text, fileName);
-      return res.status(200).json({
-        xml,
-        fileName: fileName ? fileName.replace(/\.pdf$/i, ".xml") : "convertido.xml",
-        parsedData: data,
-      });
-    } finally {
-      await parser.destroy();
+        // Tentar extrair XML do PDF
+        let xmlString = extractXMLFromPDF(text);
+
+        // Se não encontrou XML, tenta fazer parsing do texto usando heurística
+        if (!xmlString) {
+          const { xml, data } = parseDanfeText(text, fileName);
+          return res.status(200).json({
+            xml,
+            fileName: fileName ? fileName.replace(/\.pdf$/i, ".xml") : "convertido.xml",
+            parsedData: data,
+            source: "text_parser"
+          });
+        }
+
+        // Se encontrou XML, fazer parsing estruturado
+        const parsedData = parseNFE(xmlString);
+        return res.status(200).json({
+          xml: xmlString,
+          fileName: fileName ? fileName.replace(/\.pdf$/i, ".xml") : "convertido.xml",
+          parsedData,
+          source: "xml_parser"
+        });
+      } finally {
+        await parser.destroy();
+      }
+    } catch (err: any) {
+      console.error("Erro ao converter PDF para XML:", err);
+      return res.status(500).json({ error: err.message || "Erro desconhecido ao converter PDF para XML." });
     }
-  } catch (err: any) {
-    console.error("Erro ao converter PDF para XML:", err);
-    return res.status(500).json({ error: err.message || "Erro desconhecido ao converter PDF para XML." });
   }
-});
+);
+
+// Função para extrair XML embutido no PDF
+function extractXMLFromPDF(text: string): string | null {
+  // Procurar por tags XML: <nfeProc>, <NFe>, <CompNfse>, <Nfse>
+  const xmlPatterns = [
+    /<nfeProc[\s\S]*?<\/nfeProc>/i,
+    /<NFe[\s\S]*?<\/NFe>/i,
+    /<CompNfse[\s\S]*?<\/CompNfse>/i,
+    /<Nfse[\s\S]*?<\/Nfse>/i,
+  ];
+
+  for (const pattern of xmlPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+
+  return null;
+}
 
 // Configurar o Vite como middleware para servir a aplicação React em desenvolvimento
 // Em produção, servirá os arquivos estáticos compilados na pasta 'dist'

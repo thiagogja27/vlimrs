@@ -1,5 +1,6 @@
 import { PDFParse } from "pdf-parse";
 import { parseDanfeText } from "../src/lib/pdf-text-parser";
+import { parseNFE } from "../src/lib/xml-parser";
 
 async function readRawBody(req: import("http").IncomingMessage) {
   const chunks: Buffer[] = [];
@@ -7,6 +8,25 @@ async function readRawBody(req: import("http").IncomingMessage) {
     chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
   }
   return Buffer.concat(chunks);
+}
+
+function extractXMLFromPDF(text: string): string | null {
+  // Procurar por tags XML: <nfeProc>, <NFe>, <CompNfse>, <Nfse>
+  const xmlPatterns = [
+    /<nfeProc[\s\S]*?<\/nfeProc>/i,
+    /<NFe[\s\S]*?<\/NFe>/i,
+    /<CompNfse[\s\S]*?<\/CompNfse>/i,
+    /<Nfse[\s\S]*?<\/Nfse>/i,
+  ];
+
+  for (const pattern of xmlPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+
+  return null;
 }
 
 export const config = {
@@ -55,15 +75,33 @@ export default async function handler(
     try {
       const textResult = await parser.getText();
       const text = textResult.text;
-      const { xml, data } = parseDanfeText(text, fileName);
 
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({
-        xml,
-        fileName: fileName ? fileName.replace(/\.pdf$/i, ".xml") : "convertido.xml",
-        parsedData: data,
-      }));
+      // Tentar extrair XML do PDF
+      let xmlString = extractXMLFromPDF(text);
+
+      if (!xmlString) {
+        // Se não encontrou XML, tenta fazer parsing do texto usando heurística
+        const { xml, data } = parseDanfeText(text, fileName);
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          xml,
+          fileName: fileName ? fileName.replace(/\.pdf$/i, ".xml") : "convertido.xml",
+          parsedData: data,
+          source: "text_parser"
+        }));
+      } else {
+        // Se encontrou XML, fazer parsing estruturado
+        const parsedData = parseNFE(xmlString);
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          xml: xmlString,
+          fileName: fileName ? fileName.replace(/\.pdf$/i, ".xml") : "convertido.xml",
+          parsedData,
+          source: "xml_parser"
+        }));
+      }
     } finally {
       await parser.destroy();
     }
