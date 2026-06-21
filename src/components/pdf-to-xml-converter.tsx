@@ -59,17 +59,13 @@ export function PDFToXMLConverter({ onAnalyzeXML }: PDFToXMLConverterProps) {
 
   const convertSinglePDF = async (file: File): Promise<PDFConversionResult> => {
     try {
-      const base64Data = await fileToBase64(file)
-      
       const response = await fetch('/api/pdf-to-xml', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/pdf',
+          'x-file-name': file.name,
         },
-        body: JSON.stringify({
-          fileBase64: base64Data,
-          fileName: file.name,
-        }),
+        body: file,
       })
 
       const responseText = await response.text()

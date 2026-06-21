@@ -1,13 +1,12 @@
 import { PDFParse } from "pdf-parse";
 import { parseDanfeText } from "../src/lib/pdf-text-parser";
 
-async function parseRequestBody(req: import("http").IncomingMessage) {
+async function readRawBody(req: import("http").IncomingMessage) {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
     chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
   }
-  const bodyText = Buffer.concat(chunks).toString("utf-8");
-  return JSON.parse(bodyText || "{}");
+  return Buffer.concat(chunks);
 }
 
 export const config = {
@@ -15,7 +14,7 @@ export const config = {
 };
 
 export default async function handler(
-  req: import("http").IncomingMessage & { method?: string },
+  req: import("http").IncomingMessage & { method?: string; headers: Record<string, string | string[] | undefined> },
   res: import("http").ServerResponse
 ) {
   if (req.method !== "POST") {
@@ -27,17 +26,30 @@ export default async function handler(
   }
 
   try {
-    const body = await parseRequestBody(req);
-    const { fileBase64, fileName } = body as { fileBase64?: string; fileName?: string };
+    const buffer = await readRawBody(req);
+    const contentType = String(req.headers["content-type"] || "");
+    let fileName = String(req.headers["x-file-name"] || "");
+    let pdfBuffer: Buffer | null = null;
 
-    if (!fileBase64) {
-      res.statusCode = 400;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ error: "Nenhum arquivo PDF enviado no corpo da requisição." }));
-      return;
+    if (contentType.includes("application/pdf")) {
+      pdfBuffer = buffer;
+      if (!fileName) {
+        fileName = "convertido.pdf";
+      }
+    } else {
+      const bodyText = buffer.toString("utf-8");
+      const body = JSON.parse(bodyText || "{}");
+      const { fileBase64, fileName: jsonFileName } = body as { fileBase64?: string; fileName?: string };
+      fileName = fileName || jsonFileName || fileName;
+      if (!fileBase64) {
+        res.statusCode = 400;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ error: "Nenhum arquivo PDF enviado no corpo da requisição." }));
+        return;
+      }
+      pdfBuffer = Buffer.from(fileBase64, "base64");
     }
 
-    const pdfBuffer = Buffer.from(fileBase64, "base64");
     const parser = new PDFParse({ data: pdfBuffer });
 
     try {

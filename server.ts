@@ -15,16 +15,26 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Endpoint da API para converter PDF em XML de NF-e usando apenas parser local
-app.post("/api/pdf-to-xml", async (req, res) => {
-  try {
-    const { fileBase64, fileName } = req.body;
+app.post(
+  "/api/pdf-to-xml",
+  express.raw({ type: "application/pdf", limit: "50mb" }),
+  async (req, res) => {
+    try {
+      let fileName = String(req.headers["x-file-name"] || "");
+      let pdfBuffer: Buffer | null = null;
 
-    if (!fileBase64) {
-      return res.status(400).json({ error: "Nenhum arquivo PDF enviado no corpo da requisição." });
-    }
+      if (req.is("application/pdf")) {
+        pdfBuffer = req.body as Buffer;
+      } else {
+        const { fileBase64, fileName: jsonFileName } = req.body;
+        fileName = fileName || jsonFileName || fileName;
+        if (!fileBase64) {
+          return res.status(400).json({ error: "Nenhum arquivo PDF enviado no corpo da requisição." });
+        }
+        pdfBuffer = Buffer.from(fileBase64, "base64");
+      }
 
-    const pdfBuffer = Buffer.from(fileBase64, "base64");
-    const parser = new PDFParse({ data: pdfBuffer });
+      const parser = new PDFParse({ data: pdfBuffer });
     try {
       const textResult = await parser.getText();
       const text = textResult.text;
