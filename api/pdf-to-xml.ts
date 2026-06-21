@@ -1,6 +1,6 @@
 import { PDFParse } from "pdf-parse";
-import { parseDanfeText } from "../src/lib/pdf-text-parser";
-import { parseNFE } from "../src/lib/xml-parser";
+import { parseDanfeText } from "./lib/pdf-text-parser";
+import { parseNFE } from "./lib/xml-parser";
 
 async function readRawBody(req: import("http").IncomingMessage) {
   const chunks: Buffer[] = [];
