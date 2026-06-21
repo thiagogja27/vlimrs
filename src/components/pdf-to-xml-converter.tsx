@@ -72,7 +72,13 @@ export function PDFToXMLConverter({ onAnalyzeXML }: PDFToXMLConverterProps) {
         }),
       })
 
-      const data = await response.json()
+      const responseText = await response.text()
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch (parseError) {
+        throw new Error(`Resposta inválida do servidor: ${responseText}`)
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Erro inesperado ao converter PDF para XML')
